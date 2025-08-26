@@ -7,6 +7,7 @@ class CreateAffiliateInvitations < ActiveRecord::Migration[7.1]
       t.string :destination_url
       t.decimal :fee_percent, precision: 5, scale: 2
       t.boolean :apply_to_all_products, default: false
+      t.json :products
       t.string :state, null: false, default: "pending" # pending | accepted | rejected
 
       t.timestamps

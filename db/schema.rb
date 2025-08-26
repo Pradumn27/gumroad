@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_08_25_230602) do
+ActiveRecord::Schema[7.1].define(version: 2025_08_25_230604) do
   create_table "active_storage_attachments", charset: "utf8mb4", collation: "utf8mb4_unicode_ci", force: :cascade do |t|
     t.string "name", limit: 191, null: false
     t.string "record_type", limit: 191, null: false
@@ -74,16 +74,6 @@ ActiveRecord::Schema[7.1].define(version: 2025_08_25_230602) do
     t.index ["seller_id"], name: "index_affiliate_credits_on_seller_id"
   end
 
-  create_table "affiliate_invitation_products", charset: "utf8mb4", collation: "utf8mb4_unicode_ci", force: :cascade do |t|
-    t.bigint "affiliate_invitation_id", null: false
-    t.bigint "product_id", null: false
-    t.decimal "fee_percent", precision: 5, scale: 2
-    t.string "destination_url"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["affiliate_invitation_id"], name: "index_affiliate_invitation_products_on_affiliate_invitation_id"
-  end
-
   create_table "affiliate_invitations", charset: "utf8mb4", collation: "utf8mb4_unicode_ci", force: :cascade do |t|
     t.bigint "seller_id", null: false
     t.bigint "invited_by_id"
@@ -91,6 +81,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_08_25_230602) do
     t.string "destination_url"
     t.decimal "fee_percent", precision: 5, scale: 2
     t.boolean "apply_to_all_products", default: false
+    t.json "products"
     t.string "state", default: "pending", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -2742,7 +2733,6 @@ ActiveRecord::Schema[7.1].define(version: 2025_08_25_230602) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
-  add_foreign_key "affiliate_invitation_products", "affiliate_invitations"
   add_foreign_key "affiliate_invitations", "users", column: "invited_by_id", name: "fk_affiliate_invitations_invited_by"
   add_foreign_key "affiliate_invitations", "users", column: "seller_id", name: "fk_affiliate_invitations_seller"
 end
