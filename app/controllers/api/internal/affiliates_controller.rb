@@ -78,6 +78,25 @@ class Api::Internal::AffiliatesController < Api::Internal::BaseController
 
       return render json: { success: false, message: "Please enable at least one product." } if !apply_to_all_products && affiliate_params[:products].none? { _1[:enabled] }
 
+      if affiliate.nil? || !affiliate.persisted?
+        enabled_products = affiliate_params[:products].select { _1[:enabled] }
+
+        invitation = AffiliateInvitation.new(
+          email: affiliate_email,
+          seller: current_seller,
+          invited_by: current_user,
+          destination_url: affiliate_params[:destination_url],
+          fee_percent: affiliate_params[:fee_percent],
+          apply_to_all_products: apply_to_all_products,
+          products: enabled_products,
+          state: "pending"
+        )
+
+        # Send email to affiliate
+
+        return render json: { success: true, invitation_id: invitation.id }
+      end
+
       affiliate_basis_points = affiliate_params[:fee_percent].to_i * 100
       if apply_to_all_products
         affiliates_presenter = AffiliatesPresenter.new(pundit_user)
