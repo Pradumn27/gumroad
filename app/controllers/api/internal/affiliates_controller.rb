@@ -92,9 +92,13 @@ class Api::Internal::AffiliatesController < Api::Internal::BaseController
           state: "pending"
         )
 
-        # Send email to affiliate
-
-        return render json: { success: true, invitation_id: invitation.id }
+        if invitation.save
+          # Send email to affiliate
+          AffiliateMailer.affiliate_invitation(invitation.id).deliver_later
+          return render json: { success: true, invitation_id: invitation.id, message: "Invitation sent successfully" }
+        else
+          return render json: { success: false, message: invitation.errors.full_messages.first }
+        end
       end
 
       affiliate_basis_points = affiliate_params[:fee_percent].to_i * 100

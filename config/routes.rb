@@ -403,6 +403,10 @@ Rails.application.routes.draw do
 
     get "/a/:affiliate_id", to: "affiliate_redirect#set_cookie_and_redirect", as: :affiliate_redirect
     get "/a/:affiliate_id/:unique_permalink", to: "affiliate_redirect#set_cookie_and_redirect", as: :affiliate_product
+
+    # Affiliate invitation routes
+    get "/affiliate_invitations/:id/accept", to: "affiliate_invitations#accept", as: :accept_affiliate_invitation
+    get "/affiliate_invitations/:id/reject", to: "affiliate_invitations#reject", as: :reject_affiliate_invitation
     post "/links/:id/send_sample_price_change_email", to: "links#send_sample_price_change_email", as: :sample_membership_price_change_email
 
     namespace :global_affiliates do
@@ -888,6 +892,13 @@ Rails.application.routes.draw do
             get :onboarding
           end
           get :statistics, on: :member
+        end
+
+        resources :affiliate_invitations, only: [:index] do
+          member do
+            post :accept
+            post :reject
+          end
         end
 
         resources :collaborators, only: [:index, :new, :create, :edit, :update, :destroy] do

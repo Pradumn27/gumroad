@@ -3,6 +3,49 @@
 class Api::Internal::AffiliateInvitationsController < Api::Internal::BaseController
   before_action :authenticate_user!
 
+  def index
+    authorize AffiliateInvitation
+
+    invitations = AffiliateInvitation.pending
+                                   .where(email: current_user.email)
+                                   .includes(:seller, :invited_by)
+                                   .order(created_at: :desc)
+
+    render json: {
+      invitations: invitations.map do |invitation|
+        {
+          id: invitation.id,
+          seller_name: invitation.seller.name_or_username,
+          seller_id: invitation.seller.id,
+          invited_by_name: invitation.invited_by&.name_or_username || invitation.seller.name_or_username,
+          fee_percent: invitation.fee_percent,
+          apply_to_all_products: invitation.apply_to_all_products,
+          destination_url: invitation.destination_url,
+          products: invitation.apply_to_all_products ?
+            invitation.seller.links.alive.map { |link|
+              {
+                id: link.external_id,
+                name: link.name,
+                fee_percent: invitation.fee_percent,
+                destination_url: invitation.destination_url
+              }
+            } :
+            (invitation.products || []).map do |inv_prod|
+              link = invitation.seller.links.find_by_external_id_numeric(inv_prod["id"].to_i)
+              next unless link
+              {
+                id: link.external_id,
+                name: link.name,
+                fee_percent: inv_prod["fee_percent"],
+                destination_url: inv_prod["destination_url"]
+              }
+            end.compact,
+          created_at: invitation.created_at
+        }
+      end
+    }
+  end
+
   def accept
     invitation = AffiliateInvitation.find(params[:id])
     authorize invitation

@@ -9,6 +9,50 @@ class AffiliateMailer < ApplicationMailer
 
   COLLABORATOR_MAX_PRODUCTS = 5
 
+  def affiliate_invitation(invitation_id)
+    @invitation = AffiliateInvitation.find(invitation_id)
+    @seller = @invitation.seller
+    @seller_name = @seller.name_or_username
+    @invited_by_name = @invitation.invited_by&.name_or_username || @seller_name
+
+    # Prepare product information for the invitation
+    if @invitation.apply_to_all_products
+      @products = @seller.links.alive.map do |link|
+        {
+          name: link.name,
+          fee_percent: @invitation.fee_percent,
+          destination_url: @invitation.destination_url
+        }
+      end
+      @product_name = pluralize(@products.count, "product")
+      @affiliate_percentage_text = "#{@invitation.fee_percent}%"
+    else
+      @products = (@invitation.products || []).map do |product_data|
+        link = @seller.links.find_by_external_id_numeric(product_data["id"].to_i)
+        next unless link
+        {
+          name: link.name,
+          fee_percent: product_data["fee_percent"],
+          destination_url: product_data["destination_url"]
+        }
+      end.compact
+      @product_name = @products.one? ? @products.first[:name] : pluralize(@products.count, "product")
+      @affiliate_percentage_text = if @products.many? && @products.first[:fee_percent] != @products.last[:fee_percent]
+        "#{@products.last[:fee_percent]} - #{@products.first[:fee_percent]}%"
+      else
+        "#{@products.first[:fee_percent]}%"
+      end
+    end
+
+    @accept_url = Rails.application.routes.url_helpers.accept_affiliate_invitation_url(@invitation.id, host: Rails.application.config.action_mailer.default_url_options[:host])
+    @reject_url = Rails.application.routes.url_helpers.reject_affiliate_invitation_url(@invitation.id, host: Rails.application.config.action_mailer.default_url_options[:host])
+
+    @subject = "#{@seller_name} has invited you to become an affiliate"
+    mail to: @invitation.email,
+         cc: @seller.form_email,
+         subject: @subject
+  end
+
   def direct_affiliate_invitation(affiliate_id, prevent_sending_invitation_email_to_seller = false)
     @direct_affiliate = DirectAffiliate.find_by(id: affiliate_id)
     @seller = @direct_affiliate.seller
@@ -174,6 +218,30 @@ class AffiliateMailer < ApplicationMailer
     @subject = "#{invitee_name} has declined your invitation to collaborate on Gumroad"
 
     mail to: inviter.form_email,
+         subject: @subject
+  end
+
+  def affiliate_invitation_accepted(invitation_id)
+    @invitation = AffiliateInvitation.find(invitation_id)
+    @seller = @invitation.seller
+    @affiliate_user = User.find_by(email: @invitation.email)
+    @affiliate_user_name = @affiliate_user&.name_or_username || @invitation.email
+
+    @subject = "#{@affiliate_user_name} has accepted your affiliate invitation"
+
+    mail to: @seller.form_email,
+         subject: @subject
+  end
+
+  def affiliate_invitation_rejected(invitation_id)
+    @invitation = AffiliateInvitation.find(invitation_id)
+    @seller = @invitation.seller
+    @affiliate_user = User.find_by(email: @invitation.email)
+    @affiliate_user_name = @affiliate_user&.name_or_username || @invitation.email
+
+    @subject = "#{@affiliate_user_name} has declined your affiliate invitation"
+
+    mail to: @seller.form_email,
          subject: @subject
   end
 

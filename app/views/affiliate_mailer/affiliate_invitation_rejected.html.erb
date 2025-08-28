@@ -1,0 +1,13 @@
+<%= header_section(@subject) %>
+<div>
+  <p>
+    <%= @affiliate_user_name %> has declined your affiliate invitation.
+  </p>
+
+  <p>
+    You can invite other potential affiliates or manage your existing affiliates in your
+    <%= link_to "affiliates dashboard", affiliates_url, clicktracking: "off" %>.
+  </p>
+
+  <%= render("notify_affiliate_footer") %>
+</div>

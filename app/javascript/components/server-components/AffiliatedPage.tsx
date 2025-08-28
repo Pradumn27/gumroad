@@ -22,6 +22,7 @@ import { useUserAgentInfo } from "$app/components/UserAgent";
 import { Sort, useSortingTableDriver } from "$app/components/useSortingTableDriver";
 import { WithTooltip } from "$app/components/WithTooltip";
 
+import { PendingAffiliateInvitations } from "../PendingAffiliateInvitations";
 import { useGlobalEventListener } from "../useGlobalEventListener";
 
 import placeholder from "$assets/images/placeholders/affiliated.png";
@@ -336,6 +337,12 @@ const AffiliatedPage = ({
             </div>
           ) : (
             <div style={{ display: "grid", gap: "var(--spacer-7)" }}>
+              <PendingAffiliateInvitations
+                onInvitationAction={() => {
+                  // Reload affiliated products when an invitation is accepted
+                  void loadAffiliatedProducts(state.pagination.page, state.query);
+                }}
+              />
               <StatsSection {...stats} />
               {state.affiliatedProducts.length === 0 ? (
                 <div className="placeholder">

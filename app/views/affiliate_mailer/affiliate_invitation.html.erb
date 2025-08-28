@@ -1,0 +1,45 @@
+<%= header_section(@subject) %>
+<div>
+  <p>
+    <%= @seller_name %> has invited you to become an affiliate for <%= @product_name %>.
+    <% if @products.one? %>
+      For every sale you make, you will get <%= @affiliate_percentage_text %> of the total sale as your commission.
+    <% else %>
+      For every sale you make, you will get <%= @affiliate_percentage_text %> of the total sale as your commission (varies by product).
+    <% end %>
+  </p>
+
+  <% if @products.any? %>
+    <h3>Products you'll be promoting:</h3>
+    <ul>
+      <% @products.each do |product| %>
+        <li>
+          <strong><%= product[:name] %></strong>
+          <span> - Your commission: <%= product[:fee_percent] %>%</span>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <h3>What's next?</h3>
+  <p>
+    Click the button below to accept this invitation and start earning commissions:
+  </p>
+
+  <div style="text-align: center; margin: 30px 0;">
+    <%= link_to "Accept Invitation", @accept_url,
+        style: "background-color: #00a651; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;",
+        clicktracking: "off" %>
+  </div>
+
+  <p>
+    Or if you're not interested, you can
+    <%= link_to "decline this invitation", @reject_url, clicktracking: "off" %>.
+  </p>
+
+  <p>
+    <strong>Note:</strong> You must have a Gumroad account with the email address this invitation was sent to in order to accept it.
+  </p>
+
+  <%= render("notify_affiliate_footer") %>
+</div>
