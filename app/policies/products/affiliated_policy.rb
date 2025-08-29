@@ -7,4 +7,8 @@ class Products::AffiliatedPolicy < ApplicationPolicy
     user.role_marketing_for?(seller) ||
     user.role_support_for?(seller)
   end
+
+  def destroy?
+    true
+  end
 end

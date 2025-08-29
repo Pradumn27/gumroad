@@ -24,8 +24,10 @@ import { updateAffiliateRequest, approvePendingAffiliateRequests } from "$app/da
 import {
   getPagedAffiliates,
   removeAffiliate,
+  cancelAffiliateInvitation,
   Affiliate,
   AffiliateRequest,
+  PendingInvitation,
   PagedAffiliatesData,
   getOnboardingAffiliateData,
   AffiliateRequestPayload,
@@ -326,6 +328,100 @@ const AffiliateRequestsTable = ({
   );
 };
 
+const PendingInvitationsTable = ({
+  pendingInvitations,
+  onCancelled,
+}: {
+  pendingInvitations: PendingInvitation[];
+  onCancelled?: () => void;
+}) => {
+  const userAgentInfo = useUserAgentInfo();
+  const loggedInUser = useLoggedInUser();
+  const [cancellingAffiliates, setCancellingAffiliates] = React.useState<Set<string>>(new Set());
+
+  const formatAffiliateBasisPoints = (basisPoints: number) =>
+    (basisPoints / 100).toLocaleString([], { style: "percent" });
+
+  const formattedFeePercentLabel = (invitation: PendingInvitation) => {
+    if (invitation.apply_to_all_products) {
+      return formatAffiliateBasisPoints(invitation.fee_percent);
+    }
+
+    const productCommissions = invitation.products.map((product) => product.fee_percent ?? 0);
+    const minFeePercent = Math.min(...productCommissions);
+    const maxFeePercent = Math.max(...productCommissions);
+    return minFeePercent === maxFeePercent
+      ? formatAffiliateBasisPoints(minFeePercent)
+      : `${formatAffiliateBasisPoints(minFeePercent)} - ${formatAffiliateBasisPoints(maxFeePercent)}`;
+  };
+
+  const productName = (products: PendingInvitation["products"]) =>
+    products.length === 1 ? (products[0]?.name ?? "") : `${products.length} products`;
+
+  const handleCancel = asyncVoid(async (affiliateId: string) => {
+    setCancellingAffiliates((prev) => new Set(prev).add(affiliateId));
+    try {
+      await cancelAffiliateInvitation(affiliateId);
+      showAlert("Invitation cancelled successfully", "success");
+      onCancelled?.();
+    } catch (e) {
+      assertResponseError(e);
+      showAlert("Failed to cancel invitation", "error");
+    } finally {
+      setCancellingAffiliates((prev) => {
+        const next = new Set(prev);
+        next.delete(affiliateId);
+        return next;
+      });
+    }
+  });
+
+  return pendingInvitations.length > 0 ? (
+    <table>
+      <caption>Outgoing invites</caption>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Products</th>
+          <th>Commission</th>
+          <th>Invited</th>
+          <th />
+        </tr>
+      </thead>
+
+      <tbody>
+        {pendingInvitations.map((invitation) => (
+          <tr key={invitation.id}>
+            <td data-label="Name">
+              {invitation.affiliate_user_name}
+              <small>{invitation.email}</small>
+            </td>
+            <td data-label="Products">{productName(invitation.products)}</td>
+            <td data-label="Commission">{formattedFeePercentLabel(invitation)}</td>
+            <td data-label="Invited">
+              {parseISO(invitation.invitation_created_at).toLocaleDateString(userAgentInfo.locale)}
+            </td>
+            <td>
+              <div className="actions">
+                <Button
+                  color="danger"
+                  onClick={() => handleCancel(invitation.id)}
+                  disabled={!loggedInUser?.policies.direct_affiliate.update || cancellingAffiliates.has(invitation.id)}
+                  aria-label="Cancel invitation"
+                >
+                  {cancellingAffiliates.has(invitation.id) ? "Cancelling..." : "Cancel"}
+                </Button>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : (
+    <div className="placeholder">No outgoing invites</div>
+  );
+};
+
 const formattedSalesVolumeAmount = (amountCents: number) =>
   formatPriceCentsWithCurrencySymbol("usd", amountCents, { symbolFormat: "short" });
 
@@ -344,7 +440,7 @@ const AffiliatesTab = () => {
 
   const data = cast<PagedAffiliatesData>(useLoaderData());
   const [affiliateRequests] = React.useState(data.affiliate_requests);
-  const { allow_approve_all_requests: allowApproveAllRequests, affiliates, pagination } = data;
+  const { allow_approve_all_requests: allowApproveAllRequests, affiliates, pagination, pending_invitations } = data;
   const [selectedAffiliate, setSelectedAffiliate] = React.useState<Affiliate | null>(null);
   const [sort, setSort] = React.useState<Sort<SortKey> | null>(null);
   const searchQuery = searchParams.get("query") ?? "";
@@ -390,7 +486,9 @@ const AffiliatesTab = () => {
     (basisPoints / 100).toLocaleString([], { style: "percent" });
 
   const formattedFeePercentLabel = (affiliate: Affiliate) => {
-    if (affiliate.apply_to_all_products) return formatAffiliateBasisPoints(affiliate.fee_percent);
+    if (affiliate.apply_to_all_products) {
+      return formatAffiliateBasisPoints(affiliate.fee_percent);
+    }
 
     const productCommissions = affiliate.products.map((product) => product.fee_percent ?? 0);
     const minFeePercent = Math.min(...productCommissions);
@@ -453,7 +551,7 @@ const AffiliatesTab = () => {
                   : undefined
               }
             >
-              Add affiliate
+              Invite affiliate
             </Link>
           </WithTooltip>
         </>
@@ -469,6 +567,12 @@ const AffiliatesTab = () => {
           <>
             {affiliateRequests.length > 0 && !searchQuery && pagination.page === 1 ? (
               <AffiliateRequestsTable affiliateRequests={affiliateRequests} allowApproveAll={allowApproveAllRequests} />
+            ) : null}
+            {pending_invitations.length > 0 && !searchQuery && pagination.page === 1 ? (
+              <PendingInvitationsTable
+                pendingInvitations={pending_invitations}
+                onCancelled={() => revalidator.revalidate()}
+              />
             ) : null}
             {affiliates.length > 0 ? (
               <>
@@ -723,8 +827,9 @@ const Form = ({ title, headerLabel, submitLabel }: FormProps) => {
     }
 
     try {
-      await ("id" in affiliateState ? updateAffiliate(affiliateState) : addAffiliate(affiliateState));
-      showAlert("Changes saved!", "success");
+      const isEditing = "id" in affiliateState;
+      await (isEditing ? updateAffiliate(affiliateState) : addAffiliate(affiliateState));
+      showAlert(isEditing ? "Changes saved!" : "Invitation sent!", "success");
       navigate("/affiliates");
     } catch (e) {
       assertResponseError(e);
@@ -783,7 +888,7 @@ const Form = ({ title, headerLabel, submitLabel }: FormProps) => {
                 <th>Product</th>
                 <th>Commission</th>
                 <th>
-                  <a href="/help/article/333-affiliates-on-gumroad" target="_blank" rel="noreferrer">
+                  <a data-helper-prompt="Explain what a custom destination URL is and why it's beneficial to add for affiliates.">
                     Destination URL (optional)
                   </a>
                 </th>
@@ -889,7 +994,13 @@ const routes: RouteObject[] = [
         shouldGetAffiliateRequests: SSR || request.url.endsWith("/affiliates"),
         abortSignal: request.signal,
       });
-      if (data.affiliates.length === 0 && data.affiliate_requests.length === 0 && !page && !query) {
+      if (
+        data.affiliates.length === 0 &&
+        data.affiliate_requests.length === 0 &&
+        data.pending_invitations.length === 0 &&
+        !page &&
+        !query
+      ) {
         return redirect("/affiliates/onboarding");
       }
       return data;
@@ -904,9 +1015,9 @@ const routes: RouteObject[] = [
     path: "affiliates/new",
     element: (
       <Form
-        title="New Affiliate"
-        headerLabel="Add a new affiliate below and we'll send them a unique link to share with their audience. Your affiliate will then earn a commission on each sale they refer. <a href='/help/article/333-affiliates-on-gumroad' target='_blank' rel='noreferrer'>Learn more</a>"
-        submitLabel="Add affiliate"
+        title="Invite Affiliate"
+        headerLabel="Invite a new affiliate below and we'll send them an invitation to join. Once they accept, they'll get a unique link to share with their audience and earn a commission on each sale they refer. <a data-helper-prompt='How do affiliates work?'>Learn more</a>"
+        submitLabel="Send invitation"
       />
     ),
     loader: async () => {
@@ -933,7 +1044,7 @@ const routes: RouteObject[] = [
     element: (
       <Form
         title="Edit Affiliate"
-        headerLabel="The process of editing is almost identical to adding them. You can change their affiliate fee, the products they are assigned. Their affiliate link will not change. <a href='/help/article/333-affiliates-on-gumroad' target='_blank' rel='noreferrer'>Learn more</a>"
+        headerLabel="The process of editing is almost identical to adding them. You can change their affiliate fee, the products they are assigned. Their affiliate link will not change. <a data-helper-prompt='How do I edit affiliates?'>Learn more</a>"
         submitLabel="Save changes"
       />
     ),

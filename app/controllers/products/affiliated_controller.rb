@@ -16,6 +16,20 @@ class Products::AffiliatedController < Sellers::BaseController
     end
   end
 
+  def destroy
+    affiliate = DirectAffiliate.alive.find_by_external_id!(params[:id])
+
+    unless affiliate.affiliate_user == current_seller
+      return render json: { success: false, message: "Unauthorized" }, status: :unauthorized
+    end
+
+    affiliate.mark_deleted!
+
+    AffiliateMailer.affiliate_self_removal(affiliate.id).deliver_later
+
+    render json: { success: true }
+  end
+
   private
     def authorize
       super([:products, :affiliated])

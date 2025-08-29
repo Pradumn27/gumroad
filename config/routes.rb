@@ -660,7 +660,7 @@ Rails.application.routes.draw do
     get "/memberships/paged", to: "links#memberships_paged", as: :memberships_paged
 
     namespace :products do
-      resources :affiliated, only: [:index]
+      resources :affiliated, only: [:index, :destroy]
       resources :collabs, only: [:index] do
         collection do
           get :products_paged
@@ -884,6 +884,13 @@ Rails.application.routes.draw do
     scope module: :api, defaults: { format: :json } do
       namespace :internal do
         resources :affiliates, only: [:index, :show, :create, :update, :destroy] do
+          scope module: :affiliates do
+            resource :invitation, only: [] do
+              post :accept, on: :member
+              post :decline, on: :member
+              post :cancel, on: :member
+            end
+          end
           collection do
             get :onboarding
           end

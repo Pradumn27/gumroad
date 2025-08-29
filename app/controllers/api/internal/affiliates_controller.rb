@@ -139,6 +139,11 @@ class Api::Internal::AffiliatesController < Api::Internal::BaseController
       else
         true
       end
+
+      unless is_editing_affiliate
+        affiliate.build_affiliate_invitation
+      end
+
       affiliate.save
 
       return render json: { success: false, message: affiliate.errors.full_messages.first } if affiliate.errors.present?
