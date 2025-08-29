@@ -140,7 +140,7 @@ class Api::Internal::AffiliatesController < Api::Internal::BaseController
         true
       end
 
-      unless is_editing_affiliate
+      if !is_editing_affiliate
         affiliate.build_affiliate_invitation
       end
 

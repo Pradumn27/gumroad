@@ -19,15 +19,15 @@ class Products::AffiliatedController < Sellers::BaseController
   def destroy
     affiliate = DirectAffiliate.alive.find_by_external_id!(params[:id])
 
-    unless affiliate.affiliate_user == current_seller
-      return render json: { success: false, message: "Unauthorized" }, status: :unauthorized
-    end
+    if affiliate.affiliate_user != current_user
++      return render json: { success: false, message: "Forbidden", id: affiliate.external_id }, status: :forbidden
++   end
 
     affiliate.mark_deleted!
 
     AffiliateMailer.affiliate_self_removal(affiliate.id).deliver_later
 
-    render json: { success: true }
+    render json: { success: true, id: affiliate.external_id }
   end
 
   private

@@ -179,7 +179,7 @@ class AffiliateMailer < ApplicationMailer
 
   def affiliate_invitation_accepted(affiliate_id)
     affiliate = DirectAffiliate.find_by(id: affiliate_id)
-    return unless affiliate
+    return if affiliate.nil?
 
     inviter = affiliate.seller
     @invitee = affiliate.affiliate_user
@@ -193,7 +193,7 @@ class AffiliateMailer < ApplicationMailer
 
   def affiliate_invitation_declined(affiliate_id)
     affiliate = DirectAffiliate.find_by(id: affiliate_id)
-    return unless affiliate
+    return if affiliate.nil?
 
     inviter = affiliate.seller
     @invitee = affiliate.affiliate_user
@@ -207,7 +207,7 @@ class AffiliateMailer < ApplicationMailer
 
   def affiliate_self_removal(affiliate_id)
     affiliate = DirectAffiliate.find_by(id: affiliate_id)
-    return unless affiliate
+    return if affiliate.nil?
 
     seller = affiliate.seller
     @affiliate_user = affiliate.affiliate_user

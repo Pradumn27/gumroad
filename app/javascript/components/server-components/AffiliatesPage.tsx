@@ -348,6 +348,9 @@ const PendingInvitationsTable = ({
     }
 
     const productCommissions = invitation.products.map((product) => product.fee_percent ?? 0);
+    if (productCommissions.length === 0) {
+      return formatAffiliateBasisPoints(0);
+    }
     const minFeePercent = Math.min(...productCommissions);
     const maxFeePercent = Math.max(...productCommissions);
     return minFeePercent === maxFeePercent
