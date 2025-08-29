@@ -20,8 +20,8 @@ class Products::AffiliatedController < Sellers::BaseController
     affiliate = DirectAffiliate.alive.find_by_external_id!(params[:id])
 
     if affiliate.affiliate_user != current_user
-+      return render json: { success: false, message: "Forbidden", id: affiliate.external_id }, status: :forbidden
-+   end
+      return render json: { success: false, message: "Forbidden", id: affiliate.external_id }, status: :forbidden
+    end
 
     affiliate.mark_deleted!
 

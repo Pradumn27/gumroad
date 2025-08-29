@@ -15,10 +15,7 @@ class AffiliateInvitation < ApplicationRecord
   end
 
   def decline!
-    self.class.transaction do
-+      affiliate.mark_deleted!
-+      destroy!
-+      AffiliateMailer.affiliate_invitation_declined(affiliate_id).deliver_later
-+    end
+    affiliate.mark_deleted!
+    AffiliateMailer.affiliate_invitation_declined(affiliate_id).deliver_later
   end
 end
