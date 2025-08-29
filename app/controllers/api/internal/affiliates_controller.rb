@@ -178,6 +178,6 @@ class Api::Internal::AffiliatesController < Api::Internal::BaseController
     end
 
     def affiliate_params
-      params.require(:affiliate).permit(:id, :email, :destination_url, :fee_percent, :apply_to_all_products, products: [:id, :enabled, :fee_percent, :destination_url])
+      params.require(:affiliate).permit(:id, :email, :destination_url, :fee_percent, :apply_to_all_products, :name, :referral_url, products: [:id, :enabled, :fee_percent, :destination_url, :name, :referral_url])
     end
 end

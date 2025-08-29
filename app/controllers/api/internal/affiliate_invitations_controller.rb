@@ -73,7 +73,7 @@ class Api::Internal::AffiliateInvitationsController < Api::Internal::BaseControl
       invitation.update!(state: "accepted")
     end
 
-    render json: { success: true }
+    render json: { success: true, message: "Invitation accepted successfully." }
   end
 
   def reject
@@ -83,7 +83,7 @@ class Api::Internal::AffiliateInvitationsController < Api::Internal::BaseControl
     return render json: { success: false, message: "Invitation is not pending." } unless invitation.pending?
 
     invitation.update!(state: "rejected")
-    render json: { success: true }
+    render json: { success: true, message: "Invitation rejected successfully." }
   end
 
   private

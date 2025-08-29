@@ -226,6 +226,13 @@ Rails.application.routes.draw do
       end
 
       namespace :internal do
+        resources :affiliate_invitations, only: [:index] do
+          member do
+            post :accept
+            post :reject
+          end
+        end
+
         resources :home_page_numbers, only: :index
         namespace :helper do
           post :webhook, to: "webhook#handle"

@@ -315,6 +315,12 @@ const AffiliatedPage = ({
         />
       ) : (
         <section>
+          <PendingAffiliateInvitations
+            onInvitationAction={() => {
+              // Reload affiliated products when an invitation is accepted
+              void loadAffiliatedProducts(state.pagination.page, state.query);
+            }}
+          />
           {initialAffiliatedProducts.length === 0 ? (
             <div className="placeholder">
               <figure>
@@ -337,12 +343,6 @@ const AffiliatedPage = ({
             </div>
           ) : (
             <div style={{ display: "grid", gap: "var(--spacer-7)" }}>
-              <PendingAffiliateInvitations
-                onInvitationAction={() => {
-                  // Reload affiliated products when an invitation is accepted
-                  void loadAffiliatedProducts(state.pagination.page, state.query);
-                }}
-              />
               <StatsSection {...stats} />
               {state.affiliatedProducts.length === 0 ? (
                 <div className="placeholder">
