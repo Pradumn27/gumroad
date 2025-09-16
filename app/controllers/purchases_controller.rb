@@ -549,4 +549,65 @@ class PurchasesController < ApplicationController
 
       redirect_to confirm_generate_invoice_path(@purchase.external_id)
     end
+
+  # Apply VAT ID retroactively to a subscription for future charges
+  def apply_vat_id_to_subscription
+    @purchase = Purchase.find_by_external_id(params[:id])
+    return redirect_to root_path, alert: "Purchase not found" unless @purchase
+
+    # Check if this purchase is part of a subscription
+    unless @purchase.subscription.present?
+      return redirect_to purchase_path(@purchase.external_id), alert: "This purchase is not part of a subscription"
+    end
+
+    business_vat_id = params[:business_vat_id]&.strip
+    return redirect_to purchase_path(@purchase.external_id), alert: "VAT ID is required" if business_vat_id.blank?
+
+    # Validate the VAT ID using the same logic as checkout
+    validated_vat_id = validate_business_vat_id(business_vat_id, @purchase)
+    unless validated_vat_id
+      return redirect_to purchase_path(@purchase.external_id), alert: "Invalid VAT ID format"
+    end
+
+    # Apply VAT ID retroactively to the subscription
+    if @purchase.subscription.apply_vat_id_retroactively!(validated_vat_id)
+      redirect_to purchase_path(@purchase.external_id), notice: "VAT ID has been applied to your subscription. Future charges will automatically receive VAT refunds."
+    else
+      redirect_to purchase_path(@purchase.external_id), alert: "Failed to apply VAT ID to subscription"
+    end
+  end
+
+  private
+
+  def validate_business_vat_id(raw_vat_id, purchase)
+    return nil unless raw_vat_id.present?
+    return nil unless purchase.purchase_sales_tax_info.present?
+
+    if purchase.purchase_sales_tax_info.country_code == Compliance::Countries::AUS.alpha2
+      AbnValidationService.new(raw_vat_id).process ? raw_vat_id : nil
+    elsif purchase.purchase_sales_tax_info.country_code == Compliance::Countries::SGP.alpha2
+      GstValidationService.new(raw_vat_id).process ? raw_vat_id : nil
+    elsif purchase.purchase_sales_tax_info.country_code == Compliance::Countries::CAN.alpha2 &&
+          purchase.purchase_sales_tax_info.state_code == QUEBEC
+      QstValidationService.new(raw_vat_id).process ? raw_vat_id : nil
+    elsif purchase.purchase_sales_tax_info.country_code == Compliance::Countries::NOR.alpha2
+      MvaValidationService.new(raw_vat_id).process ? raw_vat_id : nil
+    elsif purchase.purchase_sales_tax_info.country_code == Compliance::Countries::BHR.alpha2
+      TrnValidationService.new(raw_vat_id).process ? raw_vat_id : nil
+    elsif purchase.purchase_sales_tax_info.country_code == Compliance::Countries::KEN.alpha2
+      KraPinValidationService.new(raw_vat_id).process ? raw_vat_id : nil
+    elsif purchase.purchase_sales_tax_info.country_code == Compliance::Countries::OMN.alpha2
+      OmanVatNumberValidationService.new(raw_vat_id).process ? raw_vat_id : nil
+    elsif purchase.purchase_sales_tax_info.country_code == Compliance::Countries::NGA.alpha2
+      FirsTinValidationService.new(raw_vat_id).process ? raw_vat_id : nil
+    elsif purchase.purchase_sales_tax_info.country_code == Compliance::Countries::TZA.alpha2
+      TraTinValidationService.new(raw_vat_id).process ? raw_vat_id : nil
+    elsif purchase.purchase_sales_tax_info.country_code.present? &&
+          (Compliance::Countries::COUNTRIES_THAT_COLLECT_TAX_ON_ALL_PRODUCTS.include?(purchase.purchase_sales_tax_info.country_code) ||
+           Compliance::Countries::COUNTRIES_THAT_COLLECT_TAX_ON_DIGITAL_PRODUCTS_WITH_TAX_ID_PRO_VALIDATION.include?(purchase.purchase_sales_tax_info.country_code))
+      TaxIdValidationService.new(raw_vat_id, purchase.purchase_sales_tax_info.country_code).process ? raw_vat_id : nil
+    else
+      VatValidationService.new(raw_vat_id).process ? raw_vat_id : nil
+    end
+  end
 end

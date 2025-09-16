@@ -100,6 +100,7 @@ Rails.application.routes.draw do
       get "/purchases/:id/generate_invoice", to: "purchases#generate_invoice", as: :generate_invoice_by_buyer
       get "/purchases/:id/generate_invoice/confirm", to: "purchases#confirm_generate_invoice", as: :confirm_generate_invoice
       post "/purchases/:id/send_invoice", to: "purchases#send_invoice", as: :send_invoice
+      post "/purchases/:id/apply_vat_id_to_subscription", to: "purchases#apply_vat_id_to_subscription", as: :apply_vat_id_to_subscription
     else
       get "/braintree/client_token", to: "braintree#client_token"
       get "/purchases/:id/generate_invoice/confirm", to: "purchases#confirm_generate_invoice"

@@ -315,6 +315,9 @@ class Subscription < ApplicationRecord
     self.credit_card_id = purchase.credit_card_id
     save!
     create_purchase_event(purchase)
+
+    # Automatically refund VAT if a valid VAT ID exists
+    process_automatic_vat_refund(purchase)
     if purchase.was_product_recommended
       recommendation_type = original_purchase.recommended_purchase_info.try(:recommendation_type)
       original_link = original_purchase.recommended_purchase_info.try(:recommended_by_link)
@@ -934,6 +937,126 @@ class Subscription < ApplicationRecord
       elsif original_purchase.refunds.where("gumroad_tax_cents > 0").where("amount_cents = 0").exists?
         purchase.business_vat_id = original_purchase.refunds.where("gumroad_tax_cents > 0").where("amount_cents = 0").first.business_vat_id
       end
+    end
+
+    # Process automatic VAT refund for recurring subscription charges
+    public
+    def process_automatic_vat_refund(purchase)
+      return unless purchase.successful?
+      return unless purchase.gumroad_tax_cents > 0
+      return unless purchase.gumroad_tax_refundable_cents > 0
+
+      # Get VAT ID from the purchase's sales tax info or from previous refunds
+      business_vat_id = get_business_vat_id_for_purchase(purchase)
+      return unless business_vat_id.present?
+
+      # Validate the VAT ID before processing refund
+      return unless validate_vat_id(business_vat_id, purchase)
+
+      Rails.logger.info("Processing automatic VAT refund for subscription #{id}, purchase #{purchase.id}, VAT ID: #{business_vat_id}")
+
+      # Process the VAT refund
+      purchase.refund_gumroad_taxes!(
+        refunding_user_id: GUMROAD_ADMIN_ID,
+        note: "Automatic VAT refund for recurring subscription",
+        business_vat_id: business_vat_id
+      )
+    end
+
+    # Get business VAT ID for a purchase from various sources
+    public
+    def get_business_vat_id_for_purchase(purchase)
+      # First check if the purchase already has a VAT ID in its sales tax info
+      if purchase.purchase_sales_tax_info&.business_vat_id.present?
+        return purchase.purchase_sales_tax_info.business_vat_id
+      end
+
+      # Check original purchase's sales tax info
+      if original_purchase&.purchase_sales_tax_info&.business_vat_id.present?
+        return original_purchase.purchase_sales_tax_info.business_vat_id
+      end
+
+      # Check if there are any VAT refunds from the original purchase
+      vat_refund = original_purchase&.refunds&.where("gumroad_tax_cents > 0")&.where("amount_cents = 0")&.first
+      if vat_refund&.business_vat_id.present?
+        return vat_refund.business_vat_id
+      end
+
+      # Check if there are any VAT refunds from any previous subscription purchases
+      previous_purchase = purchases.successful.where.not(id: purchase.id).last
+      if previous_purchase&.purchase_sales_tax_info&.business_vat_id.present?
+        return previous_purchase.purchase_sales_tax_info.business_vat_id
+      end
+
+      nil
+    end
+
+    # Validate VAT ID using the same validation logic as the checkout process
+    public
+    def validate_vat_id(business_vat_id, purchase)
+      return false unless business_vat_id.present?
+      return false unless purchase.purchase_sales_tax_info.present?
+
+      tax_info = purchase.purchase_sales_tax_info
+      country_code = tax_info.country_code
+
+      case country_code
+      when Compliance::Countries::AUS.alpha2
+        AbnValidationService.new(business_vat_id).process
+      when Compliance::Countries::SGP.alpha2
+        GstValidationService.new(business_vat_id).process
+      when Compliance::Countries::CAN.alpha2
+        if tax_info.state_code == QUEBEC
+          QstValidationService.new(business_vat_id).process
+        else
+          VatValidationService.new(business_vat_id).process
+        end
+      when Compliance::Countries::NOR.alpha2
+        MvaValidationService.new(business_vat_id).process
+      when Compliance::Countries::BHR.alpha2
+        TrnValidationService.new(business_vat_id).process
+      when Compliance::Countries::KEN.alpha2
+        KraPinValidationService.new(business_vat_id).process
+      when Compliance::Countries::OMN.alpha2
+        OmanVatNumberValidationService.new(business_vat_id).process
+      when Compliance::Countries::NGA.alpha2
+        FirsTinValidationService.new(business_vat_id).process
+      when Compliance::Countries::TZA.alpha2
+        TraTinValidationService.new(business_vat_id).process
+      else
+        if Compliance::Countries::COUNTRIES_THAT_COLLECT_TAX_ON_ALL_PRODUCTS.include?(country_code) ||
+           Compliance::Countries::COUNTRIES_THAT_COLLECT_TAX_ON_DIGITAL_PRODUCTS_WITH_TAX_ID_PRO_VALIDATION.include?(country_code)
+          TaxIdValidationService.new(business_vat_id, country_code).process
+        else
+          VatValidationService.new(business_vat_id).process
+        end
+      end
+    end
+
+    # Apply VAT ID retroactively to future charges
+    def apply_vat_id_retroactively!(business_vat_id)
+      return false unless business_vat_id.present?
+      return false unless original_purchase.present?
+
+      # Validate the VAT ID first
+      return false unless validate_vat_id(business_vat_id, original_purchase)
+
+      # Update the original purchase's sales tax info with the VAT ID
+      if original_purchase.purchase_sales_tax_info.present?
+        original_purchase.purchase_sales_tax_info.update!(business_vat_id: business_vat_id)
+      end
+
+      # Process VAT refund for the original purchase if it has VAT charges
+      if original_purchase.gumroad_tax_cents > 0 && original_purchase.gumroad_tax_refundable_cents > 0
+        original_purchase.refund_gumroad_taxes!(
+          refunding_user_id: GUMROAD_ADMIN_ID,
+          note: "Retroactive VAT ID application for subscription",
+          business_vat_id: business_vat_id
+        )
+      end
+
+      Rails.logger.info("Applied VAT ID #{business_vat_id} retroactively to subscription #{id}")
+      true
     end
 
     def schedule_member_cancellation_workflow_jobs
