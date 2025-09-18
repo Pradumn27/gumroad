@@ -23,14 +23,11 @@ import AdminSuspendForFraudForm from "$app/components/server-components/Admin/Su
 import AdminSuspendForTosForm from "$app/components/server-components/Admin/SuspendForTosForm";
 import AdminUserGuids from "$app/components/server-components/Admin/UserGuids";
 import AdminUserStats from "$app/components/server-components/Admin/UserStats";
-import AffiliatedPage from "$app/components/server-components/AffiliatedPage";
 import AffiliateRequestPage from "$app/components/server-components/AffiliateRequestPage";
 import AffiliatesPage from "$app/components/server-components/AffiliatesPage";
 import Alert from "$app/components/server-components/Alert";
-import AnalyticsPage from "$app/components/server-components/AnalyticsPage";
 import ArchivedProductsPage from "$app/components/server-components/ArchivedProductsPage";
 import AudienceCustomersPage from "$app/components/server-components/Audience/CustomersPage";
-import AudiencePage from "$app/components/server-components/AudiencePage";
 import BalancePage from "$app/components/server-components/BalancePage";
 import BundleEditPage from "$app/components/server-components/BundleEditPage";
 import DiscountsPage from "$app/components/server-components/CheckoutDashboard/DiscountsPage";
@@ -38,12 +35,10 @@ import FormPage from "$app/components/server-components/CheckoutDashboard/FormPa
 import UpsellsPage from "$app/components/server-components/CheckoutDashboard/UpsellsPage";
 import CheckoutPage from "$app/components/server-components/CheckoutPage";
 import CollaboratorsPage from "$app/components/server-components/CollaboratorsPage";
-import CollabsPage from "$app/components/server-components/CollabsPage";
 import CommunitiesPage from "$app/components/server-components/CommunitiesPage";
 import CountrySelectionModal from "$app/components/server-components/CountrySelectionModal";
 import CustomersDownloadPopover from "$app/components/server-components/CustomersPage/DownloadPopover";
 import CustomersFilterPopover from "$app/components/server-components/CustomersPage/FilterPopover";
-import DashboardPage from "$app/components/server-components/DashboardPage";
 import DeveloperWidgetsPage from "$app/components/server-components/Developer/WidgetsPage";
 import Discover from "$app/components/server-components/Discover";
 import DiscoverProductPage from "$app/components/server-components/Discover/ProductPage";
@@ -66,7 +61,6 @@ import PdfReaderPage from "$app/components/server-components/PdfReaderPage";
 import ProductPage from "$app/components/server-components/Product";
 import ProductIframePage from "$app/components/server-components/Product/IframePage";
 import ProductEditPage from "$app/components/server-components/ProductEditPage";
-import ProductsDashboardPage from "$app/components/server-components/ProductsDashboardPage";
 import Profile from "$app/components/server-components/Profile";
 import ProfileCoffeePage from "$app/components/server-components/Profile/CoffeePage";
 import ProfilePostPage from "$app/components/server-components/Profile/PostPage";
@@ -97,7 +91,6 @@ import SubscriptionManagerMagicLink from "$app/components/server-components/Subs
 import SupportHeader from "$app/components/server-components/support/Header";
 import TaxesCollectionModal from "$app/components/server-components/TaxesCollectionModal";
 import TwoFactorAuthenticationPage from "$app/components/server-components/TwoFactorAuthenticationPage";
-import UtmLinksPage from "$app/components/server-components/UtmLinksPage";
 import VideoStreamPlayer from "$app/components/server-components/VideoStreamPlayer";
 import WishlistPage from "$app/components/server-components/WishlistPage";
 import WishlistsFollowingPage from "$app/components/server-components/WishlistsFollowingPage";
@@ -125,29 +118,24 @@ ReactOnRails.register({
   AdminUserGuids,
   AdminUserStats,
   AdvancedSettingsPage,
-  AffiliatedPage,
   AffiliateRequestPage,
   AffiliatesPage,
   Alert,
-  AnalyticsPage,
   AdminAddCreditForm,
   ApplicationEditPage,
   ArchivedProductsPage,
   HelpCenterArticlesIndexPage,
   SupportHeader,
   AudienceCustomersPage,
-  AudiencePage,
   AuthorizedApplicationsSettingsPage,
   BalancePage,
   BundleEditPage,
   CheckoutPage,
   CollaboratorsPage,
-  CollabsPage,
   CommunitiesPage,
   CountrySelectionModal,
   CustomersDownloadPopover,
   CustomersFilterPopover,
-  DashboardPage,
   DeveloperWidgetsPage,
   DiscountsPage,
   Discover,
@@ -176,7 +164,6 @@ ReactOnRails.register({
   ProductIframePage,
   PurchaseProductPage,
   ProductPage,
-  ProductsDashboardPage,
   Profile,
   ProfileCoffeePage,
   ProfilePostPage,
@@ -204,5 +191,4 @@ ReactOnRails.register({
   WishlistsFollowingPage,
   WishlistsPage,
   WorkflowsPage,
-  UtmLinksPage,
 });

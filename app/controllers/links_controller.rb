@@ -618,7 +618,8 @@ class LinksController < ApplicationController
       memberships = current_seller.products.membership.visible_and_not_archived
       memberships = memberships.where("name like ?", "%#{query}%") if query.present?
 
-      sort_and_paginate_products(**paged_params[:sort].to_h.symbolize_keys, page:, collection: memberships, per_page: PER_PAGE, user_id: current_seller.id)
+      sort_params = paged_params[:sort]&.to_h&.symbolize_keys || {}
+      sort_and_paginate_products(**sort_params, page:, collection: memberships, per_page: PER_PAGE, user_id: current_seller.id)
     end
 
     def paginated_products(page:, query: nil)
@@ -632,7 +633,8 @@ class LinksController < ApplicationController
         .visible_and_not_archived
       products = products.where("links.name like ?", "%#{query}%") if query.present?
 
-      sort_and_paginate_products(**paged_params[:sort].to_h.symbolize_keys, page:, collection: products, per_page: PER_PAGE, user_id: current_seller.id)
+      sort_params = paged_params[:sort]&.to_h&.symbolize_keys || {}
+      sort_and_paginate_products(**sort_params, page:, collection: products, per_page: PER_PAGE, user_id: current_seller.id)
     end
 
     def update_removed_file_attributes

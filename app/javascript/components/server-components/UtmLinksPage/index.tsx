@@ -7,11 +7,9 @@ import {
   RouterProvider,
   json,
 } from "react-router-dom";
-import { StaticRouterProvider } from "react-router-dom/server";
 
 import { getEditUtmLink, getNewUtmLink, getUtmLinks, SortKey } from "$app/data/utm_links";
 import { assertDefined } from "$app/utils/assert";
-import { buildStaticRouter, GlobalProps, register } from "$app/utils/serverComponentUtil";
 
 import { PageHeader } from "$app/components/ui/PageHeader";
 import { Sort } from "$app/components/useSortingTableDriver";
@@ -120,11 +118,4 @@ const UtmLinksPage = () => {
   return <RouterProvider router={router} />;
 };
 
-const UtmLinksRouter = async (global: GlobalProps) => {
-  const { router, context } = await buildStaticRouter(global, routes);
-  const component = () => <StaticRouterProvider router={router} context={context} nonce={global.csp_nonce} />;
-  component.displayName = "UtmLinksRouter";
-  return component;
-};
-
-export default register({ component: UtmLinksPage, ssrComponent: UtmLinksRouter, propParser: () => ({}) });
+export default UtmLinksPage;

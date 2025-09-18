@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 class AudienceController < Sellers::BaseController
-  before_action :set_body_id_as_app
   before_action :set_time_range, only: %i[data_by_date]
 
   after_action :set_dashboard_preference_to_audience, only: :index
@@ -11,6 +10,9 @@ class AudienceController < Sellers::BaseController
     authorize :audience
 
     @total_follower_count = current_seller.audience_members.where(follower: true).count
+
+    render inertia: "Audience/index",
+           props: inertia_props(audience_props: { total_follower_count: @total_follower_count })
   end
 
   def export

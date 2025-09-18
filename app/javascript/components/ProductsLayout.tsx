@@ -1,3 +1,4 @@
+import { Link } from "@inertiajs/react";
 import * as React from "react";
 
 import { PageHeader } from "$app/components/ui/PageHeader";
@@ -21,15 +22,23 @@ export const ProductsLayout = ({
   <div>
     <PageHeader title={title || "Products"} actions={ctaButton}>
       <Tabs>
-        <Tab isSelected={selectedTab === "products"} href={Routes.products_path()}>
-          All products
+        <Tab isSelected={selectedTab === "products"}>
+          <Link className="no-underline" href={Routes.products_path()}>
+            All products
+          </Link>
         </Tab>
 
-        <Tab isSelected={selectedTab === "affiliated"} href={Routes.products_affiliated_index_path()}>
+        <Tab isSelected={selectedTab === "affiliated"}>
+          <Link className="no-underline" href={Routes.products_affiliated_index_path()}>
+            Affiliated
+          </Link>
           Affiliated
         </Tab>
 
-        <Tab isSelected={selectedTab === "collabs"} href={Routes.products_collabs_path()}>
+        <Tab isSelected={selectedTab === "collabs"}>
+          <Link className="no-underline" href={Routes.products_collabs_path()}>
+            Collabs
+          </Link>
           Collabs
         </Tab>
 

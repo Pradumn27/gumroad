@@ -1,10 +1,9 @@
 import { lightFormat } from "date-fns";
 import * as React from "react";
-import { createCast } from "ts-safe-cast";
 
 import { AudienceDataByDate, fetchAudienceDataByDate } from "$app/data/audience";
+import { showAlert } from "$app/utils/alert";
 import { AbortError } from "$app/utils/request";
-import { register } from "$app/utils/serverComponentUtil";
 
 import { AnalyticsLayout } from "$app/components/Analytics/AnalyticsLayout";
 import { useAnalyticsDateRange } from "$app/components/Analytics/useAnalyticsDateRange";
@@ -15,13 +14,16 @@ import { DateRangePicker } from "$app/components/DateRangePicker";
 import { Icon } from "$app/components/Icons";
 import { Popover } from "$app/components/Popover";
 import { Progress } from "$app/components/Progress";
-import { showAlert } from "$app/components/server-components/Alert";
 import { ExportSubscribersPopover } from "$app/components/server-components/FollowersPage/ExportSubscribersPopover";
 import { WithTooltip } from "$app/components/WithTooltip";
 
 import placeholder from "$assets/images/placeholders/audience.png";
 
-const AudiencePage = ({ total_follower_count }: { total_follower_count: number }) => {
+export type AudiencePageProps = {
+  total_follower_count: number;
+};
+
+const AudiencePage = ({ total_follower_count }: AudiencePageProps) => {
   const dateRange = useAnalyticsDateRange();
   const [data, setData] = React.useState<AudienceDataByDate | null>(null);
   const startTime = lightFormat(dateRange.from, "yyyy-MM-dd");
@@ -105,4 +107,4 @@ const AudiencePage = ({ total_follower_count }: { total_follower_count: number }
   );
 };
 
-export default register({ component: AudiencePage, propParser: createCast() });
+export default AudiencePage;
