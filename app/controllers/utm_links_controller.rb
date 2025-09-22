@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 class UtmLinksController < Sellers::BaseController
+  before_action :set_body_id_as_app
+
   def index
     authorize UtmLink
-
-    render inertia: "UtmLinks/index"
   end
 
   private

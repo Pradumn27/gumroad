@@ -33,10 +33,8 @@ export const AnalyticsLayout = ({
             </Link>
           </Tab>
           {user.policies.utm_link.index ? (
-            <Tab isSelected={selectedTab === "utm_links"}>
-              <Link className="no-underline" href={Routes.utm_links_dashboard_path()}>
-                Links
-              </Link>
+            <Tab href={Routes.utm_links_dashboard_path()} isSelected={selectedTab === "utm_links"}>
+              Links
             </Tab>
           ) : null}
         </Tabs>
