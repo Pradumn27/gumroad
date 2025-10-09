@@ -975,6 +975,8 @@ class Purchase < ApplicationRecord
                                                          purchase.displayed_price_currency_type).format(no_cents_if_whole: true, symbol: false)
       json[:was_tax_excluded_from_price] = purchase.was_tax_excluded_from_price
       json[:sales_tax_label] = purchase.tax_label
+      json[:has_business_tax_exemption] = purchase.has_business_tax_exemption?
+      json[:business_vat_id_used] = purchase.purchase_sales_tax_info&.business_vat_id if purchase.has_business_tax_exemption?
       json[:has_sales_tax_or_shipping_to_show] = (purchase.was_purchase_taxable && purchase.price_cents > 0) || purchase.shipping_cents > 0
       json[:total_price_including_tax_and_shipping] = purchase.formatted_total_transaction_amount
       json[:quantity] = purchase.quantity
@@ -1143,6 +1145,12 @@ class Purchase < ApplicationRecord
     # We *should* be able to just check for was_purchase_taxable here.
     # But it's not set in a callback, so we're also checking the tax fields to be sure.
     was_purchase_taxable || gumroad_tax_cents > 0 || tax_cents > 0
+  end
+
+  def has_business_tax_exemption?
+    purchase_sales_tax_info&.business_vat_id.present? &&
+    gumroad_tax_cents == 0 &&
+    was_purchase_taxable
   end
 
   def total_transaction_amount_for_gumroad_cents

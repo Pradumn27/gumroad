@@ -263,7 +263,9 @@ const SharedInputs = () => {
     () =>
       setShowVatIdInput((prevShowVatIdInput) =>
         state.surcharges.type === "loaded"
-          ? state.surcharges.result.has_vat_id_input || state.surcharges.result.vat_id_valid
+          ? state.surcharges.result.has_vat_id_input ||
+            state.surcharges.result.vat_id_valid ||
+            state.surcharges.result.tax_cents > 0
           : prevShowVatIdInput,
       ),
     [state.surcharges],
@@ -393,9 +395,20 @@ const SharedInputs = () => {
                   type="text"
                   placeholder={vatLabel}
                   value={state.vatId}
-                  onChange={(e) => dispatch({ type: "set-value", vatId: e.target.value })}
+                  onChange={(e) => dispatch({ type: "set-value", vatId: e.target.value.toUpperCase() })}
                   disabled={isProcessing(state)}
                 />
+                {state.surcharges.type === "loaded" && state.surcharges.result.vat_id_valid && state.vatId ? (
+                  <p style={{ color: "var(--green)", fontSize: "0.875rem", marginTop: "0.5rem" }}>
+                    ✓ Valid tax exemption ID. You will not be charged tax.
+                  </p>
+                ) : null}
+                {state.surcharges.type === "loaded" && !state.surcharges.result.vat_id_valid && state.vatId ? (
+                  <p style={{ color: "var(--red)", fontSize: "0.875rem", marginTop: "0.5rem" }}>
+                    This tax ID could not be verified. You can still purchase and request a tax refund by generating an
+                    invoice after checkout.
+                  </p>
+                ) : null}
               </fieldset>
             ) : null}
           </div>

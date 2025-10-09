@@ -244,10 +244,19 @@ export const Checkout = ({
                           <div>{formatPrice(state.surcharges.result.tax_included_cents)}</div>
                         </div>
                       ) : null}
-                      {state.surcharges.result.tax_cents ? (
+                      {state.surcharges.result.tax_cents > 0 ||
+                      (state.surcharges.result.vat_id_valid && state.vatId) ? (
                         <div>
                           <h4>{nameOfSalesTaxForCountry(state.country)}</h4>
-                          <div>{formatPrice(state.surcharges.result.tax_cents)}</div>
+                          <div>
+                            {state.surcharges.result.vat_id_valid && state.vatId ? (
+                              <span style={{ color: "var(--green)" }}>
+                                $0.00 <span style={{ fontSize: "0.875rem", opacity: 0.8 }}>(Business exemption)</span>
+                              </span>
+                            ) : (
+                              formatPrice(state.surcharges.result.tax_cents)
+                            )}
+                          </div>
                         </div>
                       ) : null}
                       {state.surcharges.result.shipping_rate_cents ? (

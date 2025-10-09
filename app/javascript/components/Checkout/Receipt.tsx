@@ -163,7 +163,19 @@ const SuccessfulLineItemResultEntry = ({ name, result }: { name: string; result:
         <div>
           <section className="stack borderless">
             <div>
-              <LineItem name={result.sales_tax_label ?? ""} price={result.sales_tax_amount} />
+              <LineItem
+                name={
+                  result.has_business_tax_exemption
+                    ? `${result.sales_tax_label ?? "Tax"} (Business exemption applied)`
+                    : (result.sales_tax_label ?? "")
+                }
+                price={result.sales_tax_amount}
+              />
+              {result.has_business_tax_exemption && result.business_vat_id_used ? (
+                <p className="text-muted" style={{ fontSize: "0.875rem", marginTop: "0.25rem" }}>
+                  Tax ID: {result.business_vat_id_used}
+                </p>
+              ) : null}
             </div>
           </section>
         </div>

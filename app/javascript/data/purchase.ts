@@ -180,6 +180,8 @@ export type ConfirmedPurchaseResponse = {
   non_formatted_seller_tax_amount: string;
   was_tax_excluded_from_price: boolean;
   sales_tax_label: string | null;
+  has_business_tax_exemption: boolean;
+  business_vat_id_used?: string;
   has_sales_tax_or_shipping_to_show: boolean;
   total_price_including_tax_and_shipping: string;
   quantity: number;
