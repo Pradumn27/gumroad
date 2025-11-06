@@ -30,8 +30,9 @@ class ProductFile < ApplicationRecord
     value.strip.upcase.gsub(/[\s–—−]/, "-")
   end
 
-  before_save :set_filegroup
-  before_save :downcase_filetype
+  normalizes :filetype, with: proc(&:downcase)
+
+  before_validation :set_filegroup
   after_commit :schedule_file_analyze, on: :create
   after_commit :stamp_existing_pdfs_if_needed, on: :update
   after_create :reset_moderated_by_iffy_flag
@@ -86,6 +87,8 @@ class ProductFile < ApplicationRecord
   end
 
   def as_json(options = {})
+    return super(options) if options.delete(:original)
+
     url_for_thumbnail = thumbnail_url
     {
       # TODO (product_edit_react) remove duplicate attribute
@@ -116,6 +119,7 @@ class ProductFile < ApplicationRecord
         }
       end,
       url:,
+      isbn:,
       thumbnail: url_for_thumbnail.present? ? { url: url_for_thumbnail, signed_id: thumbnail.signed_id, status: { type: "saved" } } : nil,
       status: { type: "saved" },
     }
@@ -221,7 +225,7 @@ class ProductFile < ApplicationRecord
     extension = s3_extension
     name_with_extension = display_name.ends_with?(extension) ? display_name : "#{display_name}#{extension}"
     new_key = MultipartTransfer.transfer_to_s3(self.s3_object.presigned_url(:get, expires_in: SignedUrlHelper::SIGNED_S3_URL_VALID_FOR_MAXIMUM.to_i).to_s, destination_filename: name_with_extension, existing_s3_object: self.s3_object)
-    self.url = URI::DEFAULT_PARSER.unescape("https://s3.amazonaws.com/#{S3_BUCKET}/#{new_key}")
+    self.url = URI::DEFAULT_PARSER.unescape("#{AWS_S3_ENDPOINT}/#{S3_BUCKET}/#{new_key}")
     save!
   end
 
@@ -346,11 +350,8 @@ class ProductFile < ApplicationRecord
         return
       end
 
-      determine_and_set_filegroup(s3_extension.delete("."))
-    end
-
-    def downcase_filetype
-      self.filetype = filetype.downcase if filetype.present?
+      extension = s3_extension&.delete(".")
+      determine_and_set_filegroup(extension) if extension.present?
     end
 
     def invalidate_product_cache

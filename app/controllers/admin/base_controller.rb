@@ -7,7 +7,11 @@ class Admin::BaseController < ApplicationController
 
   inertia_share do
     {
-      card_types: CreditCardUtility.card_types_for_react
+      card_types: CreditCardUtility.card_types_for_react,
+      compliance: {
+        reasons: Compliance::TOS_VIOLATION_REASONS,
+        default_reason: Compliance::DEFAULT_TOS_VIOLATION_REASON
+      }
     }
   end
 
@@ -86,10 +90,13 @@ class Admin::BaseController < ApplicationController
 
       kwargs[:props] ||= {}
       kwargs[:props].each_key do |key|
+        next if instance_variable_defined?("@#{key}")
         instance_variable_set("@#{key}", kwargs[:props][key])
       end
 
-      render template: kwargs[:inertia].underscore, layout: "admin_old"
+      legacy_template = kwargs.delete(:legacy_template) || kwargs[:inertia].underscore
+
+      render template: legacy_template, layout: "admin_old"
     end
 
   private

@@ -150,6 +150,7 @@ module User::Risk
   def suspended?
     suspended_for_tos_violation? || suspended_for_fraud?
   end
+  alias_method :suspended, :suspended?
 
   def flagged?
     flagged_for_tos_violation? || flagged_for_fraud?
@@ -246,8 +247,7 @@ module User::Risk
         .merge(Balance.unpaid)
         .group(:user_id)
         .having("SUM(amount_cents) > 0")
-        .order(updated_at: :desc)
-        .limit(MAX_REFUND_QUEUE_SIZE)
+        .order(updated_at: :desc, id: :desc)
     end
   end
 end

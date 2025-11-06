@@ -1494,7 +1494,7 @@ describe("Workflows", js: true, type: :system) do
       installment1 = @workflow.installments.alive.find_by(name: "Thank you!")
       expect(installment1.message).to include("<p>An important message</p>")
       expect(installment1.message).to have_link("Click me", href: "https://example.com/button")
-      expect(installment1.message).to include('<img src="https://gumroad-specs.s3.amazonaws.com')
+      expect(installment1.message).to include(%{<img src="#{AWS_S3_ENDPOINT}/#{S3_BUCKET}})
       expect(installment1.installment_rule.delayed_delivery_time).to eq(86_400)
       expect(installment1.installment_rule.time_period).to eq("day")
       expect(installment1.has_stream_only_files?).to be(false)
@@ -1620,6 +1620,40 @@ describe("Workflows", js: true, type: :system) do
       expect(@workflow.installments.alive.count).to eq(1)
       expect(@workflow.installments.alive.first.published_at).to be_nil
       expect(@workflow.installments.alive.first.name).to eq("Thank you! (edited)")
+    end
+
+    context "when seller name is invalid for email delivery" do
+      it "displays warning and prompts user to update the name" do
+        # Create a seller with colon in name (simulating legacy data)
+        seller.update_column(:name, "John: The Creator")
+
+        visit workflows_path
+        within_section @workflow.name, section_element: :section do
+          click_on "add one"
+        end
+
+        expect(page).to have_current_path("/workflows/#{@workflow.external_id}/emails")
+
+        expect(page).to have_selector("[role=alert].warning", text: "Your name contains a colon (:) which causes email delivery problems and will be removed from the sender name when emails are sent.")
+        expect(page).to have_link("Update your name", href: "/settings/profile")
+      end
+    end
+
+    context "when seller name is valid for email delivery" do
+      it "does not display warning" do
+        seller.update!(name: "John The Creator")
+
+        visit workflows_path
+        within_section @workflow.name, section_element: :section do
+          click_on "add one"
+        end
+
+        expect(page).to have_current_path("/workflows/#{@workflow.external_id}/emails")
+
+        expect(page).to_not have_selector("[role=alert].warning")
+        expect(page).to_not have_text("Your name contains a colon (:) which causes email delivery problems and will be removed from the sender name when emails are sent.")
+        expect(page).to_not have_link("Update your name", href: "/settings/profile")
+      end
     end
   end
 end

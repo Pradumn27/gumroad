@@ -6,7 +6,7 @@ module User::AsJson
   def as_json(options = {})
     result =
       if options[:internal_use] || valid_api_scope?(options)
-        super(only: %i[name bio twitter_handle currency_type])
+        super(only: %i[name bio twitter_handle currency_type], methods: options[:methods], include: options[:include])
           .merge(common_fields_for_as_json)
           .merge(profile_url: avatar_url, email: form_email)
       else
