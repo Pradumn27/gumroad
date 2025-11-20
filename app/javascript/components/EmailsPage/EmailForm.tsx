@@ -1,9 +1,9 @@
+import { Link, router, usePage } from "@inertiajs/react";
 import { DirectUpload } from "@rails/activestorage";
 import { Content, Editor, JSONContent } from "@tiptap/core";
 import cx from "classnames";
 import { addHours, format, startOfDay, startOfHour } from "date-fns";
 import React from "react";
-import { Link, Location, useLoaderData, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { cast } from "ts-safe-cast";
 
 import {
@@ -32,6 +32,7 @@ import {
   isFileUploading,
   mapEmailFilesToFileState,
 } from "$app/components/EmailAttachments";
+import { appendFromParam, editEmailPath, emailTabPath, newEmailPath } from "$app/components/EmailsPage";
 import { EvaporateUploaderProvider } from "$app/components/EvaporateUploader";
 import { Icon } from "$app/components/Icons";
 import { LoadingSpinner } from "$app/components/LoadingSpinner";
@@ -41,7 +42,6 @@ import { ImageUploadSettingsContext, RichTextEditor } from "$app/components/Rich
 import { S3UploadConfigProvider } from "$app/components/S3UploadConfig";
 import { Separator } from "$app/components/Separator";
 import { showAlert } from "$app/components/server-components/Alert";
-import { editEmailPath, emailTabPath, newEmailPath } from "$app/components/server-components/EmailsPage";
 import { InvalidNameForEmailDeliveryWarning } from "$app/components/server-components/InvalidNameForEmailDeliveryWarning";
 import { TagInput } from "$app/components/TagInput";
 import { UpsellCard } from "$app/components/TiptapExtensions/UpsellCard";
@@ -178,9 +178,19 @@ const DEFAULT_SECONDS_LEFT_TO_PUBLISH = 5;
 export const EmailForm = () => {
   const uid = React.useId();
   const currentSeller = assertDefined(useCurrentSeller());
+  const page = usePage();
   const { context, installment } = cast<{ context: InstallmentFormContext; installment: Installment | null }>(
-    useLoaderData(),
+    page.props,
   );
+
+  const currentUrl = React.useMemo(() => {
+    const base = typeof window !== "undefined" ? window.location.origin : "http://localhost";
+    return new URL(page.url, base);
+  }, [page.url]);
+  const searchParams = React.useMemo(() => new URLSearchParams(currentUrl.search), [currentUrl.search]);
+  const pathname = currentUrl.pathname;
+  const fromPath = searchParams.get("from") ?? undefined;
+
   const hasAudience = context.audience_types.length > 0;
   const [audienceType, setAudienceType] = React.useState<AudienceType>(
     installment ? getAudienceType(installment.installment_type) : "everyone",
@@ -199,8 +209,6 @@ export const EmailForm = () => {
     loading: boolean;
   }>({ count: 0, total: 0, loading: false });
   const activeRecipientCountRequest = React.useRef<{ cancel: () => void } | null>(null);
-  const [searchParams] = useSearchParams();
-  const routerLocation = cast<Location<{ from?: string | undefined } | null>>(useLocation());
   const [bought, setBought] = React.useState<string[]>(() => {
     if (!installment) return [];
     return installment.installment_type === "variant" && installment.variant_external_id
@@ -313,7 +321,7 @@ export const EmailForm = () => {
   );
 
   useRunOnce(() => {
-    if (routerLocation.pathname !== newEmailPath || searchParams.size === 0) return;
+    if (pathname !== newEmailPath || !searchParams.toString()) return;
 
     const tier = searchParams.get("tier");
     const permalink = searchParams.get("product");
@@ -547,7 +555,6 @@ export const EmailForm = () => {
       });
     }
   };
-  const navigate = useNavigate();
   const [isSaving, setIsSaving] = React.useState(false);
   const save = asyncVoid(async (action: SaveAction = "save") => {
     if (!validate(action)) return;
@@ -604,14 +611,12 @@ export const EmailForm = () => {
       }
 
       if (action === "save_and_schedule") {
-        navigate(emailTabPath("scheduled"));
+        router.visit(emailTabPath("scheduled"));
       } else if (action === "save_and_publish") {
-        navigate(emailTabPath("published"));
+        router.visit(emailTabPath("published"));
       } else {
-        navigate(editEmailPath(response.installment_id), {
-          replace: true,
-          state: { from: routerLocation.state?.from },
-        });
+        const destination = appendFromParam(editEmailPath(response.installment_id), fromPath ?? "");
+        router.visit(destination, { replace: true });
       }
     } catch (e) {
       assertResponseError(e);
@@ -625,8 +630,7 @@ export const EmailForm = () => {
     imagesUploading.size > 0 ||
     files.some((file) => isFileUploading(file) || file.subtitle_files.some(isFileUploading));
 
-  const cancelPath =
-    routerLocation.state?.from ?? emailTabPath(context.has_scheduled_emails ? "scheduled" : "published");
+  const cancelPath = fromPath ?? emailTabPath(context.has_scheduled_emails ? "scheduled" : "published");
 
   return (
     <div>
@@ -664,7 +668,14 @@ export const EmailForm = () => {
                 Preview
               </Button>
             )}
-            <Link to={cancelPath} className="button" inert={isBusy}>
+            <Link
+              href={cancelPath}
+              className="button"
+              aria-disabled={isBusy}
+              onClick={(event) => {
+                if (isBusy) event.preventDefault();
+              }}
+            >
               <Icon name="x-square" />
               Cancel
             </Link>

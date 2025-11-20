@@ -1,47 +1,59 @@
+import { Link, usePage } from "@inertiajs/react";
 import cx from "classnames";
 import React from "react";
-import { RouterProvider, createBrowserRouter, RouteObject, Link, json, useLocation } from "react-router-dom";
-import { StaticRouterProvider } from "react-router-dom/server";
 
-import {
-  getDraftInstallments,
-  getEditInstallment,
-  getNewInstallment,
-  getPublishedInstallments,
-  getScheduledInstallments,
-  previewInstallment,
-  SavedInstallment,
-} from "$app/data/installments";
+import { previewInstallment, SavedInstallment } from "$app/data/installments";
 import { assertDefined } from "$app/utils/assert";
 import { formatStatNumber } from "$app/utils/formatStatNumber";
 import { asyncVoid } from "$app/utils/promise";
 import { assertResponseError } from "$app/utils/request";
-import { register, GlobalProps, buildStaticRouter } from "$app/utils/serverComponentUtil";
 
 import { Button } from "$app/components/Button";
 import { Icon } from "$app/components/Icons";
 import { Popover } from "$app/components/Popover";
 import { showAlert } from "$app/components/server-components/Alert";
-import { DraftsTab } from "$app/components/server-components/EmailsPage/DraftsTab";
-import { EmailForm } from "$app/components/server-components/EmailsPage/EmailForm";
-import { PublishedTab } from "$app/components/server-components/EmailsPage/PublishedTab";
-import { ScheduledTab } from "$app/components/server-components/EmailsPage/ScheduledTab";
 import { PageHeader } from "$app/components/ui/PageHeader";
 import Placeholder from "$app/components/ui/Placeholder";
 import { Tabs, Tab } from "$app/components/ui/Tabs";
 import { WithTooltip } from "$app/components/WithTooltip";
-const TABS = ["published", "scheduled", "drafts", "subscribers"] as const;
 
-export const emailTabPath = (tab: (typeof TABS)[number]) => `/emails/${tab}`;
+const EMAIL_TABS = ["published", "scheduled", "drafts"] as const;
+const TABS = [...EMAIL_TABS, "subscribers"] as const;
+
+export type EmailTab = (typeof EMAIL_TABS)[number];
+
+export const emailTabPath = (tab: EmailTab) => `/emails/${tab}`;
 export const newEmailPath = "/emails/new";
 export const editEmailPath = (id: string) => `/emails/${id}/edit`;
+
+const SearchContext = React.createContext<[string, (value: string) => void] | null>(null);
+export const useSearchContext = () => assertDefined(React.useContext(SearchContext));
+
+export const EmailsPageShell = ({
+  selectedTab,
+  hasPosts,
+  children,
+}: {
+  selectedTab: EmailTab;
+  hasPosts?: boolean;
+  children: React.ReactNode;
+}) => {
+  const queryState = React.useState("");
+  return (
+    <SearchContext.Provider value={queryState}>
+      <Layout selectedTab={selectedTab} hasPosts={hasPosts}>
+        {children}
+      </Layout>
+    </SearchContext.Provider>
+  );
+};
 
 export const Layout = ({
   selectedTab,
   children,
   hasPosts,
 }: {
-  selectedTab: (typeof TABS)[number];
+  selectedTab: EmailTab;
   children: React.ReactNode;
   hasPosts?: boolean;
 }) => {
@@ -94,8 +106,10 @@ export const Layout = ({
                 Subscribers
               </Tab>
             ) : (
-              <Tab href={emailTabPath(tab)} isSelected={selectedTab === tab} key={tab}>
-                {tab === "published" ? "Published" : tab === "scheduled" ? "Scheduled" : "Drafts"}
+              <Tab isSelected={selectedTab === tab} key={tab} asChild>
+                <Link href={emailTabPath(tab)}>
+                  {tab === "published" ? "Published" : tab === "scheduled" ? "Scheduled" : "Drafts"}
+                </Link>
               </Tab>
             ),
           )}
@@ -106,23 +120,46 @@ export const Layout = ({
   );
 };
 
+export const appendFromParam = (path: string, from: string) => {
+  const params = new URLSearchParams();
+  if (path.includes("?")) {
+    const [base, search] = path.split("?");
+    const searchParams = new URLSearchParams(search);
+    searchParams.forEach((value, key) => params.append(key, value));
+    path = base;
+  }
+  if (from) params.set("from", from);
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
+};
+
+const useCurrentPathname = () => {
+  const { url } = usePage();
+  return React.useMemo(() => url.split("?")[0], [url]);
+};
+
 export const NewEmailButton = ({ copyFrom }: { copyFrom?: string }) => {
-  const { pathname: from } = useLocation();
+  const pathname = useCurrentPathname();
+  const href = React.useMemo(() => {
+    const params = new URLSearchParams();
+    if (copyFrom) params.set("copy_from", copyFrom);
+    if (pathname) params.set("from", pathname);
+    const query = params.toString();
+    return query ? `${newEmailPath}?${query}` : newEmailPath;
+  }, [copyFrom, pathname]);
+
   return (
-    <Link
-      className={cx("button", { accent: !copyFrom })}
-      to={copyFrom ? `${newEmailPath}?copy_from=${copyFrom}` : newEmailPath}
-      state={{ from }}
-    >
+    <Link className={cx("button", { accent: !copyFrom })} href={href}>
       {copyFrom ? "Duplicate" : "New email"}
     </Link>
   );
 };
 
 export const EditEmailButton = ({ id }: { id: string }) => {
-  const { pathname: from } = useLocation();
+  const pathname = useCurrentPathname();
+  const href = React.useMemo(() => appendFromParam(editEmailPath(id), pathname), [id, pathname]);
   return (
-    <Link className="button" to={editEmailPath(id)} state={{ from }}>
+    <Link className="button" href={href}>
       Edit
     </Link>
   );
@@ -186,62 +223,3 @@ export const audienceCountValue = (audienceCounts: AudienceCounts, installmentId
       ? "--"
       : formatStatNumber({ value: count });
 };
-
-const routes: RouteObject[] = [
-  {
-    path: emailTabPath("published"),
-    element: <PublishedTab />,
-    loader: async () => json(await getPublishedInstallments({ page: 1, query: "" }).response, { status: 200 }),
-  },
-  {
-    path: emailTabPath("scheduled"),
-    element: <ScheduledTab />,
-    loader: async () => json(await getScheduledInstallments({ page: 1, query: "" }).response, { status: 200 }),
-  },
-  {
-    path: emailTabPath("drafts"),
-    element: <DraftsTab />,
-    loader: async () => json(await getDraftInstallments({ page: 1, query: "" }).response, { status: 200 }),
-  },
-  {
-    path: newEmailPath,
-    element: <EmailForm />,
-    loader: async ({ request }) =>
-      json(await getNewInstallment(new URL(request.url).searchParams.get("copy_from")), {
-        status: 200,
-      }),
-  },
-  {
-    path: editEmailPath(":id"),
-    element: <EmailForm />,
-    loader: async ({ params }) =>
-      json(await getEditInstallment(assertDefined(params.id, "Installment ID is required")), { status: 200 }),
-  },
-];
-
-const SearchContext = React.createContext<[string, (thing: string) => void] | null>(null);
-export const useSearchContext = () => assertDefined(React.useContext(SearchContext));
-
-const EmailsPage = () => {
-  const router = createBrowserRouter(routes);
-  const queryState = React.useState("");
-
-  return (
-    <SearchContext.Provider value={queryState}>
-      <RouterProvider router={router} />
-    </SearchContext.Provider>
-  );
-};
-
-const EmailsRouter = async (global: GlobalProps) => {
-  const { router, context } = await buildStaticRouter(global, routes);
-  const component = () => (
-    <SearchContext.Provider value={["", () => {}]}>
-      <StaticRouterProvider router={router} context={context} nonce={global.csp_nonce} />
-    </SearchContext.Provider>
-  );
-  component.displayName = "EmailsRouter";
-  return component;
-};
-
-export default register({ component: EmailsPage, ssrComponent: EmailsRouter, propParser: () => ({}) });
