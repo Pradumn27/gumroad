@@ -14,7 +14,7 @@ type Props = {
 const DateTimeWithRelativeTooltip = ({ date, placeholder, utc }: Props) => {
   if (!date) return placeholder;
 
-  const relativeTime = formatDistanceToNow(new Date(date), { addSuffix: true });
+  const relativeTime = formatDistanceToNow(new Date(date));
   const formattedDate = utc ? `${formatDate(new Date(date), { timeZone: "UTC" })} UTC` : formatDate(new Date(date));
 
   return <WithTooltip tip={relativeTime}>{formattedDate}</WithTooltip>;
